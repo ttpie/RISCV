@@ -1,0 +1,81 @@
+ELF Header:
+  Magic:   7f 45 4c 46 01 01 01 00 00 00 00 00 00 00 00 00 
+  Class:                             ELF32
+  Data:                              2's complement, little endian
+  Version:                           1 (current)
+  OS/ABI:                            UNIX - System V
+  ABI Version:                       0
+  Type:                              EXEC (Executable file)
+  Machine:                           RISC-V
+  Version:                           0x1
+  Entry point address:               0x80000000
+  Start of program headers:          52 (bytes into file)
+  Start of section headers:          4692 (bytes into file)
+  Flags:                             0x0
+  Size of this header:               52 (bytes)
+  Size of program headers:           32 (bytes)
+  Number of program headers:         3
+  Size of section headers:           40 (bytes)
+  Number of section headers:         7
+  Section header string table index: 6
+
+Section Headers:
+  [Nr] Name              Type            Addr     Off    Size   ES Flg Lk Inf Al
+  [ 0]                   NULL            00000000 000000 000000 00      0   0  0
+  [ 1] .text             PROGBITS        80000000 001000 000058 00  AX  0   0  4
+  [ 2] .comment          PROGBITS        00000000 001058 000019 01  MS  0   0  1
+  [ 3] .riscv.attributes RISCV_ATTRIBUTE 00000000 001071 00001c 00      0   0  1
+  [ 4] .symtab           SYMTAB          00000000 001090 000110 10      5   8  4
+  [ 5] .strtab           STRTAB          00000000 0011a0 000076 00      0   0  1
+  [ 6] .shstrtab         STRTAB          00000000 001216 00003c 00      0   0  1
+Key to Flags:
+  W (write), A (alloc), X (execute), M (merge), S (strings), I (info),
+  L (link order), O (extra OS processing required), G (group), T (TLS),
+  C (compressed), x (unknown), o (OS specific), E (exclude),
+  D (mbind), p (processor specific)
+
+There are no section groups in this file.
+
+Program Headers:
+  Type           Offset   VirtAddr   PhysAddr   FileSiz MemSiz  Flg Align
+  RISCV_ATTRIBUT 0x001071 0x00000000 0x00000000 0x0001c 0x00000 R   0x1
+  LOAD           0x000000 0x7ffff000 0x7ffff000 0x01058 0x01058 R E 0x1000
+  GNU_STACK      0x000000 0x00000000 0x00000000 0x00000 0x00000 RW  0x10
+
+ Section to Segment mapping:
+  Segment Sections...
+   00     .riscv.attributes 
+   01     .text 
+   02     
+
+There is no dynamic section in this file.
+
+There are no relocations in this file.
+
+The decoding of unwind sections for machine type RISC-V is not currently supported.
+
+Symbol table '.symtab' contains 17 entries:
+   Num:    Value  Size Type    Bind   Vis      Ndx Name
+     0: 00000000     0 NOTYPE  LOCAL  DEFAULT  UND 
+     1: 80000000     0 SECTION LOCAL  DEFAULT    1 .text
+     2: 00000000     0 SECTION LOCAL  DEFAULT    2 .comment
+     3: 00000000     0 SECTION LOCAL  DEFAULT    3 .riscv.attributes
+     4: 00000000     0 FILE    LOCAL  DEFAULT  ABS start.o
+     5: 80000000     0 NOTYPE  LOCAL  DEFAULT    1 $xrv32i2p1
+     6: 00000000     0 FILE    LOCAL  DEFAULT  ABS test1.c
+     7: 80000010     0 NOTYPE  LOCAL  DEFAULT    1 $xrv32i2p1
+     8: 80001858     0 NOTYPE  GLOBAL DEFAULT  ABS __global_pointer$
+     9: 80001058     0 NOTYPE  GLOBAL DEFAULT    1 __SDATA_BEGIN__
+    10: 80000000     0 NOTYPE  GLOBAL DEFAULT    1 _start
+    11: 80001058     0 NOTYPE  GLOBAL DEFAULT    1 __BSS_END__
+    12: 80001058     0 NOTYPE  GLOBAL DEFAULT    1 __bss_start
+    13: 80000010    72 FUNC    GLOBAL DEFAULT    1 main
+    14: 80001058     0 NOTYPE  GLOBAL DEFAULT    1 __DATA_BEGIN__
+    15: 80001058     0 NOTYPE  GLOBAL DEFAULT    1 _edata
+    16: 80001058     0 NOTYPE  GLOBAL DEFAULT    1 _end
+
+No version information found in this file.
+Attribute Section: riscv
+File Attributes
+  Tag_RISCV_stack_align: 16-bytes
+  Tag_RISCV_arch: "rv32i2p1"
