@@ -35,10 +35,10 @@ module tb_core_test1;
 
         $dumpfile("tb_test1.vcd");
         $dumpvars(0, tb_core_test1);
-        $readmemh("data/hex/imem_test_full.hex", dut.IMEM.memory, 0, 1023);
-        $readmemh("data/hex/init_dmem.hex", dut.DMEM.memory, 0, 1023);
+        $readmemh("data/hex/imem_diag_loop.hex", dut.IMEM.memory, 0, 1023);
+        $readmemh("data/hex/dmem_diag_loop.hex", dut.DMEM.memory, 0, 1023);
          
-        fd_golden = $fopen("data/golden/golden_test_full_filtered.txt", "r");
+        fd_golden = $fopen("data/golden/golden_diag_loop_filtered.txt", "r");
         if (fd_golden == 0) begin
           $display("❌ Cannot open golden trace file");
           $finish;

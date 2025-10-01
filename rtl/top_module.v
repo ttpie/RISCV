@@ -249,7 +249,7 @@ module top_module (
     wire [31:0] PC_next;
 
     assign pc_jump_jal = IFID_pc_out + imm;  
-    assign pc_jump_jalr = rs1_data_src + imm;
+    assign pc_jump_jalr = rs1_data_src + imm; // stage ID
 
      assign PC_next = trapReq ?  PC :
                  is_jalr ?  (pc_jump_jalr & 32'hFFFF_FFFC) :
