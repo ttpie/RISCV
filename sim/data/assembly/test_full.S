@@ -1,6 +1,6 @@
 	.file	"test_full.c"
 	.option nopic
-	.attribute arch, "rv32i2p1"
+	.attribute arch, "rv32i2p1_m2p0_zmmul1p0"
 	.attribute unaligned_access, 0
 	.attribute stack_align, 16
 	.text

@@ -62,10 +62,12 @@ SPIKE = "spike"
 run_cmd([CC, "-c", start_s, "-o", start_o, "-march=rv32im", "-mabi=ilp32"], "Compiling start.S")
 
 # 2. Compile C -> Assembly (.S)
-run_cmd([CC, "-O2", "-S", c_file, "-o", asm_file, "-march=rv32im", "-mabi=ilp32"], f"Compiling {c_file} to assembly with -O2")
+#run_cmd([CC, "-O2", "-S", c_file, "-o", asm_file, "-march=rv32im", "-mabi=ilp32"], f"Compiling {c_file} to assembly with -O2")
+run_cmd([CC, "-S", c_file, "-o", asm_file, "-march=rv32im", "-mabi=ilp32"], f"Compiling {c_file} to assembly")
 
 # 3. Compile C -> Object (.o)
-run_cmd([CC, "-O2", "-c", c_file, "-o", test_o, "-march=rv32im", "-mabi=ilp32"], f"Compiling {c_file} to object with -O2")
+#run_cmd([CC, "-O2", "-c", c_file, "-o", test_o, "-march=rv32im", "-mabi=ilp32"], f"Compiling {c_file} to object with -O2")
+run_cmd([CC, "-c", c_file, "-o", test_o, "-march=rv32im", "-mabi=ilp32"], f"Compiling {c_file} to object")
 
 # 4. Link
 run_cmd([LD, "-T", linker_script, "-e", "_start", start_o, test_o, "-o", elf_file], "Linking ELF")

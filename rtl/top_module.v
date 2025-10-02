@@ -248,7 +248,7 @@ module top_module (
     reg [31:0] PC;
     wire [31:0] PC_next;
 
-    assign pc_jump_jal = IFID_pc_out + imm;  
+    assign pc_jump_jal = IFID_pc_out + imm;   //stage ID
     assign pc_jump_jalr = rs1_data_src + imm; // stage ID
 
      assign PC_next = trapReq ?  PC :

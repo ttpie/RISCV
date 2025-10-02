@@ -43,7 +43,7 @@ module tb_core_test1;
           $display("❌ Cannot open golden trace file");
           $finish;
         end
-
+        
         #20 reset_n = 1;
   end
 
