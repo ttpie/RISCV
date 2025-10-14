@@ -4,14 +4,14 @@ module EX_MEM(
   input wire [4:0]  addr_rd_in,
   input wire [2:0]  funct3_in,
   input wire        BrEq_in, BrLT_in,
-  input wire        MemRW_in, PCSel_in, regWEn_in, trapReq_in, memRead_in, is_jalr_in,  
+  input wire        MemW_in, PCSel_in, regWEn_in, trapReq_in, memRead_in, is_jalr_in, is_div_in, 
   input wire [1:0]  WBSel_in,
 
   output reg [31:0] ALU_res_out, rs2_out, pc_out, instr_out,
   output reg [4:0]  addr_rd_out,
   output reg [2:0]  funct3_out,
   output reg        BrEq_out, BrLT_out,
-  output reg        MemRW_out, regWEn_out, trapReq_out, memRead_out,is_jalr_out,
+  output reg        MemW_out, regWEn_out, trapReq_out, memRead_out,is_jalr_out, is_div_out,
   output reg [1:0]  WBSel_out
 );
 
@@ -26,8 +26,9 @@ module EX_MEM(
         trapReq_out <= 1'b0;
         BrEq_out    <= 1'b0;
         is_jalr_out <= 1'b0;
+        is_div_out  <= 1'b0;
         BrLT_out    <= 1'b0;
-        MemRW_out   <= 1'b0;
+        MemW_out    <= 1'b0;
         memRead_out <= 1'b0;
         regWEn_out  <= 1'b0;
         WBSel_out   <= 2'b0;
@@ -42,7 +43,8 @@ module EX_MEM(
         BrEq_out    <= BrEq_in;
         BrLT_out    <= BrLT_in;
         is_jalr_out <= is_jalr_in;
-        MemRW_out   <= MemRW_in;
+        is_div_out  <= is_div_in;
+        MemW_out    <= MemW_in;
         memRead_out <= memRead_in;
         regWEn_out  <= regWEn_in;
         WBSel_out   <= WBSel_in;

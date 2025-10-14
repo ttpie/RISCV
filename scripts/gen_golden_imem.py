@@ -179,12 +179,29 @@ else:
     print(">> No sdata/data section found.")
 
 # Create dmem hex padded so that DMEM index 0 == .text VMA
+# ==========================================================
+# Create dmem hex padded so that DMEM index 0 == .text VMA
+# ==========================================================
+
 dmem_hex = os.path.join(hex_dir, "dmem_" + base + ".hex")
 dmem_words = []
 
+# --- Dump thêm .bss và .rodata để tránh vùng chưa khởi tạo ---
+bss_bin = os.path.join(hex_dir, base + ".bss.bin")
+rodata_bin = os.path.join(hex_dir, base + ".rodata.bin")
+
+for section, path in [(".bss", bss_bin), (".rodata", rodata_bin)]:
+    try:
+        run_cmd([OBJCOPY, "-O", "binary", "--only-section=" + section, elf_file, path],
+                f"Generating {section} binary")
+    except subprocess.CalledProcessError:
+        open(path, "wb").close()
+        print(f"No {section} section present; created empty file.")
+
+# --- Tính offset giữa .text và .sdata ---
 if sdata_vma is None:
     dmem_words = [0]
-    write_wordhex(dmem_words, dmem_hex)
+    print(">> No sdata/data present, DMEM will contain only padding.")
 else:
     if sdata_vma < text_vma:
         print("Warning: sdata VMA < text VMA. This is unusual. We'll set offset 0.")
@@ -194,12 +211,28 @@ else:
 
     print(f">> sdata offset in words from .text = {offset_words}")
 
+    # --- Padding và thêm dữ liệu ---
     dmem_words = [0] * offset_words
     sdata_words = read_words_le(sdata_bin)
+
+    # --- Gộp thêm .bss và .rodata ---
+    bss_words = read_words_le(bss_bin)
+    rodata_words = read_words_le(rodata_bin)
+
     if len(sdata_words) == 0:
-        print(">> .sdata/.data binary empty (no data).")
+        print(">> .sdata/.data binary empty (no initialized data).")
+    if len(bss_words) == 0:
+        print(">> .bss empty.")
+    if len(rodata_words) == 0:
+        print(">> .rodata empty.")
+
     dmem_words.extend(sdata_words)
-    write_wordhex(dmem_words, dmem_hex)
+    dmem_words.extend(bss_words)
+    dmem_words.extend(rodata_words)
+
+write_wordhex(dmem_words, dmem_hex)
+print(f">> Generated DMEM hex ({len(dmem_words)} words including padding).")
+
 
 # create full image hex (optional)
 full_hex = os.path.join(hex_dir, "full_" + base + ".hex")

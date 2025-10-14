@@ -2,7 +2,7 @@ module data_memory(
    input wire clk,
    input wire [31 : 0] address,
    input wire [31 : 0] write_data,
-   input wire MemRW, memRead, 
+   input wire MemW, memRead, 
    input wire [2 : 0] funct3, // For load/store type
    output reg [31 : 0] read_data
 );
@@ -12,7 +12,7 @@ module data_memory(
 
     integer i;  
     always @(posedge clk) begin
-        if (MemRW == 1) begin
+        if (MemW == 1) begin
             case (funct3)
                 3'b000: begin //sb
                     case (address[1 : 0])

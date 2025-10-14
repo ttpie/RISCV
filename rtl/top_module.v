@@ -15,15 +15,15 @@ module top_module (
     wire [2:0]  funct3;
     wire [31:0] imm;
 
-    wire        regWEn, BSel, ASel, flush, trapReq, branch, is_jalr;
+    wire        regWEn, BSel, ASel, flush, trapReq, branch, is_jalr, is_div, start_div;
     reg         PCSel_src, take_branch;
-    wire        MemRW, memRead;
-    wire [1:0]  WBSel;
+    wire        MemW, memRead;
+    wire [1:0]  WBSel, div_mode;
     wire [4:0]  ALUSel;
     wire        BrUn, BrEq, BrLt;
 
     wire [31:0] rs1_data, rs2_data, rs1_data_src, rs2_data_src;
-    wire [31:0] alu_a, alu_b, alu_out;
+    wire [31:0] alu_a, alu_b, alu_out, alu_src;
     wire [31:0] read_data;
     wire [31:0] write_data;
     wire [31:0] data_in;  // data to write back to register
@@ -32,32 +32,36 @@ module top_module (
     wire        IFID_valid_out;
 
     wire [31:0] IDEX_pc_out, IDEX_rs1_out, IDEX_rs2_out, IDEX_imm_out, IDEX_instr_out;     // output reg ID EX
-    wire        IDEX_BrUn_out, IDEX_regWEn_out, IDEX_MemRW_out, IDEX_BSel_out, 
-                IDEX_ASel_out, IDEX_trapReq_out, IDEX_memRead_out, IDEX_branch_out, IDEX_is_jalr_out;
+    wire        IDEX_BrUn_out, IDEX_regWEn_out, IDEX_MemW_out, IDEX_BSel_out, 
+                IDEX_ASel_out, IDEX_trapReq_out, IDEX_memRead_out, IDEX_branch_out, IDEX_is_jalr_out, IDEX_is_div_out;
     wire [2:0]  IDEX_funct3_out;
-    wire [1:0]  IDEX_WBSel_out;
+    wire [1:0]  IDEX_WBSel_out, IDEX_div_mode_out;
     wire [4:0]  IDEX_ALUSel_out;
     wire [4:0]  IDEX_addr_rd_out, IDEX_addr_rs1_out, IDEX_addr_rs2_out;
   
     wire [31:0] EXMEM_ALU_res_out, EXMEM_rs2_out, EXMEM_pc_out, EXMEM_instr_out;  // output reg EX MEM 
     wire [2:0]  EXMEM_funct3_out;
     wire [4:0]  EXMEM_addr_rd_out;
-    wire        EXMEM_BrEq_out, EXMEM_BrLT_out;
-    wire        EXMEM_MemRW_out, EXMEM_PCSel_out, EXMEM_regWEn_out, EXMEM_trapReq_out, EXMEM_memRead_out, EXMEM_is_jalr_out;
+    wire        EXMEM_BrEq_out, EXMEM_BrLT_out, EXMEM_is_div_out;
+    wire        EXMEM_MemW_out, EXMEM_PCSel_out, EXMEM_regWEn_out, EXMEM_trapReq_out, EXMEM_memRead_out, EXMEM_is_jalr_out;
     wire [1:0]  EXMEM_WBSel_out;
 
     wire [31:0] MEMWB_mem_data_out, MEMWB_ALU_res_out, MEMWB_pc_out, MEMWB_instr_out; // output reg MEM WB
     wire [4:0]  MEMWB_addr_rd_out;
     wire [1:0]  MEMWB_WBSel_out;
-    wire        MEMWB_regWEn_out, MEMWB_trapReq_out, MEMWB_PCSel_out, MEMWB_is_jalr_out;
+    wire        MEMWB_regWEn_out, MEMWB_trapReq_out, MEMWB_PCSel_out, MEMWB_is_jalr_out, MEMWB_is_div_out;
+
+    wire [31:0] div_result;
+    wire        div_done;
 
     wire [1:0] forwardA, forwardB, forwardA_ID, forwardB_ID; // Forwarding 
     
     // hazard detection signals
     wire pc_write, IFID_write, control_MuxSel, IDEX_write;
-    wire BrUn_mux, regWEn_mux, MemRW_mux, PCSel_mux, BSel_mux, ASel_mux, memRead_mux;
+    wire BrUn_mux, regWEn_mux, MemW_mux, PCSel_mux, BSel_mux, ASel_mux, memRead_mux;
     wire [1:0] WBSel_mux;
     wire [4:0] ALUSel_mux;
+    
  
     // === Hazard Detection Unit ===
     hazard_detection_unit hazard_detection_unit (
@@ -65,6 +69,8 @@ module top_module (
         .IFID_RS1(Addr_rs1),
         .IFID_RS2(Addr_rs2),
         .IDEX_MemRead(IDEX_memRead_out),
+        .is_div(IDEX_is_div_out),
+        .div_done(div_done),
         .pc_write(pc_write),
         .IFID_write(IFID_write),
         .IDEX_write(IDEX_write),
@@ -73,7 +79,7 @@ module top_module (
   
     assign BrUn_mux   = control_MuxSel ? 1'b0    : BrUn;
     assign regWEn_mux = control_MuxSel ? 1'b0    : regWEn;
-    assign MemRW_mux  = control_MuxSel ? 1'b0    : MemRW;
+    assign MemW_mux   = control_MuxSel ? 1'b0    : MemW;
     assign BSel_mux   = control_MuxSel ? 1'b0    : BSel;
     assign ASel_mux   = control_MuxSel ? 1'b0    : ASel;
     assign WBSel_mux  = control_MuxSel ? 2'b00   : WBSel;
@@ -100,6 +106,7 @@ module top_module (
        .ALU_res_in(EXMEM_ALU_res_out),
        .pc_in (EXMEM_pc_out),
        .is_jalr_in(EXMEM_is_jalr_out),
+       .is_div_in(EXMEM_is_div_out),
        .instr_in(EXMEM_instr_out),
        .addr_rd_in(EXMEM_addr_rd_out),
        .WBSel_in(EXMEM_WBSel_out),
@@ -112,6 +119,7 @@ module top_module (
        .addr_rd_out(MEMWB_addr_rd_out),
        .WBSel_out(MEMWB_WBSel_out),
        .is_jalr_out(MEMWB_is_jalr_out),
+       .is_div_out(MEMWB_is_div_out),
        .trapReq_out(MEMWB_trapReq_out),
        .regWEn_out(MEMWB_regWEn_out)
     );
@@ -129,22 +137,25 @@ module top_module (
     assign Addr_rs1 = IFID_instr_out[19:15];
     assign Addr_rs2 = IFID_instr_out[24:20];
 
+    wire regWEn_src = IDEX_is_div_out ? (div_done && IDEX_regWEn_out) : IDEX_regWEn_out;
+
     EX_MEM EX_MEM(
         .clk(clk),
         .reset(reset_n),
         .funct3_in(IDEX_funct3_out),
-        .ALU_res_in(alu_out),
+        .ALU_res_in(alu_src),
         .rs2_in(alu_b_src),
         .pc_in(IDEX_pc_out),
         .instr_in(IDEX_instr_out),
         .addr_rd_in(IDEX_addr_rd_out),
         .is_jalr_in(IDEX_is_jalr_out),
+        .is_div_in(IDEX_is_div_out),
         .trapReq_in(IDEX_trapReq_out),
         .BrEq_in(BrEq),
         .BrLT_in(BrLt),
-        .regWEn_in(IDEX_regWEn_out),
+        .regWEn_in(regWEn_src),
         .memRead_in(IDEX_memRead_out),
-        .MemRW_in(IDEX_MemRW_out),
+        .MemW_in(IDEX_MemW_out),
         .WBSel_in(IDEX_WBSel_out),
         .ALU_res_out(EXMEM_ALU_res_out),
         .pc_out(EXMEM_pc_out),
@@ -156,9 +167,10 @@ module top_module (
         .BrEq_out(EXMEM_BrEq_out),
         .BrLT_out(EXMEM_BrLT_out),
         .regWEn_out(EXMEM_regWEn_out),
-        .MemRW_out(EXMEM_MemRW_out),
+        .MemW_out(EXMEM_MemW_out),
         .memRead_out(EXMEM_memRead_out),
         .is_jalr_out(EXMEM_is_jalr_out),
+        .is_div_out(EXMEM_is_div_out),
         .WBSel_out(EXMEM_WBSel_out)
     );
     
@@ -172,6 +184,8 @@ module top_module (
        .IDEX_write(IDEX_write),
        .pc_in(IFID_pc_out),
        .is_jalr_in(is_jalr),
+       .is_div_in(is_div),
+       .div_mode_in(div_mode),
        .instr_in(IFID_instr_out),
        .rs1_in(rs1_data_src),
        .rs2_in(rs2_data_src),
@@ -185,7 +199,7 @@ module top_module (
        .ASel_in(ASel_mux),
        .WBSel_in(WBSel_mux),
        .ALUSel_in(ALUSel_mux),
-       .MemRW_in(MemRW_mux),
+       .MemW_in(MemW_mux),
        .memRead_in(memRead_mux),
        .addr_rd_in(Addr_rd),
        .addr_rs1_in(Addr_rs1),
@@ -198,10 +212,12 @@ module top_module (
        .imm_out(IDEX_imm_out),
        .trapReq_out(IDEX_trapReq_out),
        .is_jalr_out(IDEX_is_jalr_out),
+       .is_div_out(IDEX_is_div_out),
+       .div_mode_out(IDEX_div_mode_out),
        .branch_out(IDEX_branch_out),
        .BrUn_out(IDEX_BrUn_out),
        .regWEn_out(IDEX_regWEn_out),
-       .MemRW_out(IDEX_MemRW_out),
+       .MemW_out(IDEX_MemW_out),
        .memRead_out(IDEX_memRead_out),
        .BSel_out(IDEX_BSel_out),
        .ASel_out(IDEX_ASel_out),
@@ -217,7 +233,7 @@ module top_module (
         .reset(reset_n),
         .flush_jal(flush),           
         .flush_branch(take_branch), 
-        .write_enable(IFID_write), 
+        .IFID_write(IFID_write), 
         .pc_in(address),
         .instr_in(instruction),
         .pc_out(IFID_pc_out),
@@ -230,11 +246,13 @@ module top_module (
         .BrEq(EXMEM_BrEq_out),
         .BrLt(EXMEM_BrLT_out),
         .is_jalr(is_jalr),
+        .is_div(is_div),
+        .div_mode(div_mode),
         .BrUn(BrUn),
         .branch(branch),
         .trapReq(trapReq),
         .regWEn(regWEn),
-        .MemRW(MemRW),
+        .MemW(MemW),
         .memRead(memRead),
         .BSel(BSel),
         .ASel(ASel),
@@ -326,12 +344,33 @@ module top_module (
         .ALU_Out(alu_out)
     );
     
-   
+    assign alu_src = div_done ? div_result : alu_out;
+
+    reg IDEX_is_div_dly;
+    
+    always @(posedge clk or negedge reset_n) begin
+            if (!reset_n) IDEX_is_div_dly <= 1'b0;
+            else IDEX_is_div_dly <= IDEX_is_div_out;
+    end
+    wire div_start_pulse = IDEX_is_div_out & ~IDEX_is_div_dly;
+
+    // === Division Unit ===
+    div_unit DIV (
+        .clk(clk),
+        .rst_n(reset_n),
+        .start(div_start_pulse),
+        .dividend(alu_a_src),
+        .divisor(alu_b_src),
+        .mode(IDEX_div_mode_out),
+        .div_result(div_result),
+        .done(div_done)
+    );
+    
        // === Data Memory ===
     data_memory DMEM (
         .clk(clk),
         .address(EXMEM_ALU_res_out),
-        .MemRW(EXMEM_MemRW_out),
+        .MemW(EXMEM_MemW_out),
         .memRead(EXMEM_memRead_out),
         .write_data(EXMEM_rs2_out),
         .funct3(EXMEM_funct3_out),
