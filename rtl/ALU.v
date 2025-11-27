@@ -30,10 +30,6 @@ module ALU_RV32IM(
                         product = $unsigned(A) * $unsigned(B);
                         ALU_Out = product[63:32];
                      end
-            // 5'b01111: ALU_Out = $signed(A) / $signed(B); //div
-            // 5'b10000: ALU_Out = A / B; //DIVU 
-            // 5'b10001: ALU_Out = $signed(A) % $signed(B); // REM
-            // 5'b10010: ALU_Out = A % B; //REMU
             5'b11111: ALU_Out = 32'b0; 
             default: ALU_Out = 32'b0;
        endcase

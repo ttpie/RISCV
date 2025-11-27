@@ -54,7 +54,7 @@ module div_unit (
                     // ======================================================
                 if (divisor == 0) begin
                     case (mode)
-                        DIV:  div_result <= 32'h7FFFFFFF;    // DIV  signed
+                        DIV:  div_result <= 32'hFFFFFFFF;    // DIV  signed
                         DIVU: div_result <= 32'hFFFFFFFF;    // DIVU unsigned
                         REM:  div_result <= dividend;        // REM  signed
                         REMU: div_result <= dividend;        // REMU unsigned

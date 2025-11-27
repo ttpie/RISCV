@@ -6,13 +6,15 @@ module EX_MEM(
   input wire        BrEq_in, BrLT_in,
   input wire        MemW_in, PCSel_in, regWEn_in, trapReq_in, memRead_in, is_jalr_in, is_div_in, 
   input wire [1:0]  WBSel_in,
+  input wire [31:0] csr_rdata_in, mtvec_in, mepc_in,
 
   output reg [31:0] ALU_res_out, rs2_out, pc_out, instr_out,
   output reg [4:0]  addr_rd_out,
   output reg [2:0]  funct3_out,
   output reg        BrEq_out, BrLT_out,
   output reg        MemW_out, regWEn_out, trapReq_out, memRead_out,is_jalr_out, is_div_out,
-  output reg [1:0]  WBSel_out
+  output reg [1:0]  WBSel_out,
+  output reg [31:0] csr_rdata_out, mtvec_out, mepc_out
 );
 
  always @(posedge clk or negedge reset) begin
@@ -32,6 +34,9 @@ module EX_MEM(
         memRead_out <= 1'b0;
         regWEn_out  <= 1'b0;
         WBSel_out   <= 2'b0;
+        csr_rdata_out <= 32'b0;
+        mtvec_out   <= 32'b0;
+        mepc_out    <= 32'b0;
     end else begin
         ALU_res_out <= ALU_res_in;
         rs2_out     <= rs2_in;
@@ -48,6 +53,9 @@ module EX_MEM(
         memRead_out <= memRead_in;
         regWEn_out  <= regWEn_in;
         WBSel_out   <= WBSel_in;
+        csr_rdata_out <= csr_rdata_in;
+        mtvec_out   <= mtvec_in;
+        mepc_out    <= mepc_in;
     end
  end
 endmodule

@@ -15,6 +15,16 @@ module top_module (
     wire [2:0]  funct3;
     wire [31:0] imm;
 
+    wire csr_we;
+    wire [2:0] csr_op;
+    wire [11:0] csr_addr;
+    wire [31:0] trap_cause, trap_tval;
+    wire mret_exec;
+
+    wire [31:0] csr_wdata, csr_rdata_o;
+    wire [31:0] mtvec_base_o, mepc_o, mcause_o, mstatus_o, mtval_o, mstatush_o;
+    wire [1:0]  mtvec_mode_o;
+
     wire        regWEn, BSel, ASel, flush, trapReq, branch, is_jalr, is_div, start_div;
     reg         PCSel_src, take_branch;
     wire        MemW, memRead;
@@ -23,7 +33,7 @@ module top_module (
     wire        BrUn, BrEq, BrLt;
 
     wire [31:0] rs1_data, rs2_data, rs1_data_src, rs2_data_src;
-    wire [31:0] alu_a, alu_b, alu_out, alu_src;
+    wire [31:0] alu_a, alu_b, alu_out, ex_result;
     wire [31:0] read_data;
     wire [31:0] write_data;
     wire [31:0] data_in;  // data to write back to register
@@ -38,6 +48,11 @@ module top_module (
     wire [1:0]  IDEX_WBSel_out, IDEX_div_mode_out;
     wire [4:0]  IDEX_ALUSel_out;
     wire [4:0]  IDEX_addr_rd_out, IDEX_addr_rs1_out, IDEX_addr_rs2_out;
+    wire        IDEX_csr_we_out;
+    wire [2:0]  IDEX_csr_op_out;
+    wire [11:0] IDEX_csr_addr_out;
+    wire [31:0] IDEX_trap_cause_out, IDEX_trap_tval_out;
+    wire        IDEX_mret_exec_out; 
   
     wire [31:0] EXMEM_ALU_res_out, EXMEM_rs2_out, EXMEM_pc_out, EXMEM_instr_out;  // output reg EX MEM 
     wire [2:0]  EXMEM_funct3_out;
@@ -45,11 +60,13 @@ module top_module (
     wire        EXMEM_BrEq_out, EXMEM_BrLT_out, EXMEM_is_div_out;
     wire        EXMEM_MemW_out, EXMEM_PCSel_out, EXMEM_regWEn_out, EXMEM_trapReq_out, EXMEM_memRead_out, EXMEM_is_jalr_out;
     wire [1:0]  EXMEM_WBSel_out;
+    wire [31:0] EXMEM_csr_rdata_out, EXMEM_mtvec_out, EXMEM_mepc_out;
 
     wire [31:0] MEMWB_mem_data_out, MEMWB_ALU_res_out, MEMWB_pc_out, MEMWB_instr_out; // output reg MEM WB
     wire [4:0]  MEMWB_addr_rd_out;
     wire [1:0]  MEMWB_WBSel_out;
     wire        MEMWB_regWEn_out, MEMWB_trapReq_out, MEMWB_PCSel_out, MEMWB_is_jalr_out, MEMWB_is_div_out;
+    wire [31:0] MEMWB_csr_rdata_out;
 
     wire [31:0] div_result;
     wire        div_done;
@@ -57,13 +74,17 @@ module top_module (
     wire [1:0] forwardA, forwardB, forwardA_ID, forwardB_ID; // Forwarding 
     
     // hazard detection signals
+
     wire pc_write, IFID_write, control_MuxSel, IDEX_write;
     wire BrUn_mux, regWEn_mux, MemW_mux, PCSel_mux, BSel_mux, ASel_mux, memRead_mux;
     wire [1:0] WBSel_mux;
     wire [4:0] ALUSel_mux;
     
- 
-    // === Hazard Detection Unit ===
+     
+    // ========= Hazard Detection Unit ===========
+
+    // assign ID_need_csr_read = csr_we| trapReq; 
+
     hazard_detection_unit hazard_detection_unit (
         .IDEX_Rd(IDEX_addr_rd_out),
         .IFID_RS1(Addr_rs1),
@@ -112,6 +133,7 @@ module top_module (
        .WBSel_in(EXMEM_WBSel_out),
        .trapReq_in(EXMEM_trapReq_out),
        .regWEn_in(EXMEM_regWEn_out),
+       .csr_rdata_in(EXMEM_csr_rdata_out),
        .mem_data_out(MEMWB_mem_data_out),
        .ALU_res_out(MEMWB_ALU_res_out),
        .pc_out (MEMWB_pc_out),
@@ -121,10 +143,20 @@ module top_module (
        .is_jalr_out(MEMWB_is_jalr_out),
        .is_div_out(MEMWB_is_div_out),
        .trapReq_out(MEMWB_trapReq_out),
-       .regWEn_out(MEMWB_regWEn_out)
+       .regWEn_out(MEMWB_regWEn_out),
+       .csr_rdata_out(MEMWB_csr_rdata_out)
     );
     
-    assign data_in = (MEMWB_WBSel_out == 2'b00)? MEMWB_mem_data_out : (MEMWB_WBSel_out == 2'b01)? MEMWB_ALU_res_out : (MEMWB_pc_out + 4);
+   // assign data_in = (MEMWB_WBSel_out == 2'b00)? MEMWB_mem_data_out : (MEMWB_WBSel_out == 2'b01)? MEMWB_ALU_res_out : (MEMWB_pc_out + 4);
+    
+    //----------------------
+    // WB stage data select
+    //----------------------
+    assign data_in =        (MEMWB_WBSel_out == 2'b00) ? MEMWB_mem_data_out :   // từ bộ nhớ (LW)
+                            (MEMWB_WBSel_out == 2'b01) ? MEMWB_ALU_res_out   :   // từ ALU
+                            (MEMWB_WBSel_out == 2'b10) ? (MEMWB_pc_out + 4)  :   // từ PC+4 (JAL/JALR)
+                            (MEMWB_WBSel_out == 2'b11) ? MEMWB_csr_rdata_out :   // từ CSR (CSRRW, CSRRS, CSRRC,…)
+                            32'b0;                                               // mặc định
 
     wire [31:0] alu_a_src = (forwardA == 2'b10) ? EXMEM_ALU_res_out : (forwardA == 2'b01) ? data_in : IDEX_rs1_out; //muxA
     assign alu_a = IDEX_ASel_out ? IDEX_pc_out : alu_a_src;
@@ -143,7 +175,7 @@ module top_module (
         .clk(clk),
         .reset(reset_n),
         .funct3_in(IDEX_funct3_out),
-        .ALU_res_in(alu_src),
+        .ALU_res_in(ex_result),
         .rs2_in(alu_b_src),
         .pc_in(IDEX_pc_out),
         .instr_in(IDEX_instr_out),
@@ -151,12 +183,15 @@ module top_module (
         .is_jalr_in(IDEX_is_jalr_out),
         .is_div_in(IDEX_is_div_out),
         .trapReq_in(IDEX_trapReq_out),
+        .mtvec_in(mtvec_base_o),
+        .mepc_in(mepc_o),
         .BrEq_in(BrEq),
         .BrLT_in(BrLt),
         .regWEn_in(regWEn_src),
         .memRead_in(IDEX_memRead_out),
         .MemW_in(IDEX_MemW_out),
         .WBSel_in(IDEX_WBSel_out),
+        .csr_rdata_in(csr_rdata_o), 
         .ALU_res_out(EXMEM_ALU_res_out),
         .pc_out(EXMEM_pc_out),
         .instr_out(EXMEM_instr_out),
@@ -171,7 +206,10 @@ module top_module (
         .memRead_out(EXMEM_memRead_out),
         .is_jalr_out(EXMEM_is_jalr_out),
         .is_div_out(EXMEM_is_div_out),
-        .WBSel_out(EXMEM_WBSel_out)
+        .WBSel_out(EXMEM_WBSel_out),
+        .mtvec_out(EXMEM_mtvec_out),
+        .mepc_out(EXMEM_mepc_out),
+        .csr_rdata_out(EXMEM_csr_rdata_out)
     );
     
     assign rs1_data_src = (MEMWB_regWEn_out && MEMWB_addr_rd_out!=0 && MEMWB_addr_rd_out == Addr_rs1)? data_in : rs1_data;
@@ -181,6 +219,7 @@ module top_module (
        .clk(clk),
        .reset(reset_n),
        .flush_branch(take_branch), 
+       .flush_trap(trap_taken),
        .IDEX_write(IDEX_write),
        .pc_in(IFID_pc_out),
        .is_jalr_in(is_jalr),
@@ -192,6 +231,12 @@ module top_module (
        .funct3_in(funct3),
        .imm_in(imm),
        .trapReq_in(trapReq),
+       .csr_we_in(csr_we),
+       .csr_op_in(csr_op),
+       .csr_addr_in(csr_addr),
+       .trap_cause_in(trap_cause),
+       .trap_tval_in(trap_tval),
+       .mret_exec_in(mret_exec),
        .branch_in(branch),
        .BrUn_in(BrUn_mux),
        .regWEn_in(regWEn_mux),
@@ -211,6 +256,12 @@ module top_module (
        .funct3_out(IDEX_funct3_out),
        .imm_out(IDEX_imm_out),
        .trapReq_out(IDEX_trapReq_out),
+       .csr_we_out(IDEX_csr_we_out),
+       .csr_op_out(IDEX_csr_op_out),
+       .csr_addr_out(IDEX_csr_addr_out),
+       .trap_cause_out(IDEX_trap_cause_out),
+       .trap_tval_out(IDEX_trap_tval_out),
+       .mret_exec_out(IDEX_mret_exec_out),
        .is_jalr_out(IDEX_is_jalr_out),
        .is_div_out(IDEX_is_div_out),
        .div_mode_out(IDEX_div_mode_out),
@@ -231,6 +282,7 @@ module top_module (
     IF_ID IF_ID (
         .clk(clk),
         .reset(reset_n),
+        .flush_trap(IDEX_trapReq_out),
         .flush_jal(flush),           
         .flush_branch(take_branch), 
         .IFID_write(IFID_write), 
@@ -250,6 +302,12 @@ module top_module (
         .div_mode(div_mode),
         .BrUn(BrUn),
         .branch(branch),
+        .csr_we(csr_we),
+        .csr_op(csr_op),
+        .csr_addr(csr_addr),
+        .mret_exec(mret_exec),
+        .trap_cause(trap_cause),
+        .trap_tval(trap_tval),
         .trapReq(trapReq),
         .regWEn(regWEn),
         .MemW(MemW),
@@ -269,12 +327,12 @@ module top_module (
     assign pc_jump_jal = IFID_pc_out + imm;   //stage ID
     assign pc_jump_jalr = rs1_data_src + imm; // stage ID
 
-     assign PC_next = trapReq ?  PC :
-                 is_jalr ?  (pc_jump_jalr & 32'hFFFF_FFFC) :
-                 flush       ?  pc_jump_jal :
-                 take_branch ?  (alu_out & 32'hFFFF_FFFC) :
-                 pc_write    ? (PC + 4) : PC;
-
+     assign PC_next = IDEX_trapReq_out ?  mtvec_base_o :   // address trap handler 
+                      mret_exec        ?  (mepc_o + 4) :         // return from  (address trap + 4)
+                      is_jalr          ?  (pc_jump_jalr & 32'hFFFF_FFFC) :
+                      flush            ?  pc_jump_jal :
+                      take_branch      ?  (alu_out & 32'hFFFF_FFFC) :
+                      pc_write         ?  (PC + 4) : PC;
 
     always @(posedge clk or negedge reset_n) begin
         if (!reset_n)
@@ -335,6 +393,35 @@ module top_module (
         .BrEq(BrEq),
         .BrLt(BrLt)
     );
+    
+    // ============================ CSR Unit ================================
+    wire csr_use_imm = (IDEX_csr_op_out == 3'b100 || 
+                        IDEX_csr_op_out == 3'b101 || 
+                        IDEX_csr_op_out == 3'b110);
+
+    wire [31:0] csr_wdata_src = csr_use_imm ? {27'b0, IDEX_instr_out[19:15]} : alu_a_src; // rs1 or zimm
+
+    csr_unit CSR_Unit (
+        .clk(clk),
+        .rst_n(reset_n),
+        .csr_we(IDEX_csr_we_out),
+        .csr_op(IDEX_csr_op_out),
+        .csr_addr(IDEX_csr_addr_out),
+        .csr_wdata(csr_wdata_src),
+        .csr_rdata(csr_rdata_o),
+        .trap_taken(IDEX_trapReq_out),
+        .trap_pc(IDEX_pc_out),
+        .trap_cause(IDEX_trap_cause_out),
+        .trap_tval(IDEX_trap_tval_out),
+        .mret_exec(IDEX_mret_exec_out),
+        .mtvec_base_o(mtvec_base_o),
+        .mtvec_mode_o(mtvec_mode_o),
+        .mepc_o(mepc_o),
+        .mcause_o(mcause_o),
+        .mstatush_o(mstatush_o),
+        .mstatus_o(mstatus_o),
+        .mtval_o(mtval_o)
+    );
 
     // === ALU ===
     ALU_RV32IM ALU (
@@ -344,21 +431,26 @@ module top_module (
         .ALU_Out(alu_out)
     );
     
-    assign alu_src = div_done ? div_result : alu_out;
+    assign ex_result = div_done ? div_result : ((IDEX_WBSel_out == 2'b11) ? csr_rdata_o : alu_out);
 
-    reg IDEX_is_div_dly;
-    
+    reg div_busy;
+
+    wire div_start = IDEX_is_div_out & ~div_busy;
+
     always @(posedge clk or negedge reset_n) begin
-            if (!reset_n) IDEX_is_div_dly <= 1'b0;
-            else IDEX_is_div_dly <= IDEX_is_div_out;
+        if (!reset_n)
+            div_busy <= 1'b0;
+        else if (div_start)   
+            div_busy <= 1'b1;        // bắt đầu div
+        else if (div_done)     
+            div_busy <= 1'b0;        // xong → clear busy
     end
-    wire div_start_pulse = IDEX_is_div_out & ~IDEX_is_div_dly;
 
     // === Division Unit ===
     div_unit DIV (
         .clk(clk),
         .rst_n(reset_n),
-        .start(div_start_pulse),
+        .start(div_start),
         .dividend(alu_a_src),
         .divisor(alu_b_src),
         .mode(IDEX_div_mode_out),

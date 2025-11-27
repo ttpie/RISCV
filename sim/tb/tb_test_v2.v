@@ -51,11 +51,11 @@ module tb_core_test;
 
             $dumpfile("tb_test_v2.vcd");
             $dumpvars(0, tb_core_test);
-            $readmemh("data/hex/imem_test_rv32im_v2.hex", dut.IMEM.memory, 0, 1023);
-            $readmemh("data/hex/dmem_test_rv32im_v2.hex", dut.DMEM.memory, 0, 1023);
+            $readmemh("data/hex/imem_test_rv32im.hex", dut.IMEM.memory, 0, 1023);
+            $readmemh("data/hex/dmem_test_rv32im.hex", dut.DMEM.memory, 0, 1023);
 
             golden_cnt = 0;
-            fd_golden = $fopen("data/golden/golden_test_rv32im_v2_filtered.txt","r");
+            fd_golden = $fopen("data/golden/golden_test_rv32im_filtered.txt","r");
             if (fd_golden == 0) begin
             $display("❌ Cannot open golden trace file");
             $finish;

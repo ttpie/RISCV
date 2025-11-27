@@ -1,0 +1,37 @@
+sim/build/test_ecall_v2.elf:     file format elf32-littleriscv
+
+Disassembly of section .text:
+
+80000000 <_start>:
+80000000:	00000297          	auipc	t0,0x0
+80000004:	05c28293          	addi	t0,t0,92 # 8000005c <trap_handler>
+80000008:	30529073          	csrw	mtvec,t0
+8000000c:	00000073          	ecall
+80000010:	00a00513          	li	a0,10
+80000014:	01400593          	li	a1,20
+80000018:	00b50633          	add	a2,a0,a1
+8000001c:	03200693          	li	a3,50
+80000020:	40b68733          	sub	a4,a3,a1
+80000024:	02b507b3          	mul	a5,a0,a1
+80000028:	02a6c833          	div	a6,a3,a0
+8000002c:	02a6e8b3          	rem	a7,a3,a0
+80000030:	00b573b3          	and	t2,a0,a1
+80000034:	00b56e33          	or	t3,a0,a1
+80000038:	00b54eb3          	xor	t4,a0,a1
+8000003c:	00b51f33          	sll	t5,a0,a1
+80000040:	00b6dfb3          	srl	t6,a3,a1
+80000044:	40b6d433          	sra	s0,a3,a1
+80000048:	00b524b3          	slt	s1,a0,a1
+8000004c:	00b53933          	sltu	s2,a0,a1
+80000050:	00b50463          	beq	a0,a1,80000058 <loop>
+80000054:	00000013          	nop
+
+80000058 <loop>:
+80000058:	0000006f          	j	80000058 <loop>
+
+8000005c <trap_handler>:
+8000005c:	342022f3          	csrr	t0,mcause
+80000060:	34102373          	csrr	t1,mepc
+80000064:	00430313          	addi	t1,t1,4
+80000068:	34131073          	csrw	mepc,t1
+8000006c:	30200073          	mret
